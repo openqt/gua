@@ -44,6 +44,8 @@ func main() {
 
 			gc := g.Change()
 			gc.Show()
+
+			g.Divining()
 		},
 		PersistentPreRun: Conf,
 	}

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/olekukonko/tablewriter"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"os"
@@ -25,20 +24,36 @@ type YaoType struct {
 	Text  string
 }
 
-type GuaType struct {
-	No [SEQLEN]int // 卜算数字
-
+type DataType struct {
 	Index string          // 卦序
 	Name  string          // 卦名
 	Desc  string          // 介绍
 	Yao   [SEQLEN]YaoType // 六爻
 }
 
-var YiData map[string]GuaType // 易经数据
+var (
+	Data map[string]DataType // 易经数据
+)
+
+func Load(filename string) {
+	data, err := Asset("data.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := json.Unmarshal(data, &Data); err != nil {
+		log.Fatal(err)
+	}
+}
+
+////////////////////////////////////////////////////////////
+type GuaType struct {
+	No [SEQLEN]int // 卜算数字
+}
 
 func (g *GuaType) Show() {
-	data := YiData[g.GetIndex()]
-	fmt.Printf("%s 【卦%s】\n", data.Name, data.Index)
+	data := Data[g.GetDataIndex()]
+	fmt.Printf("%s【卦%s】\n", data.Name, data.Index)
 
 	tb := tablewriter.NewWriter(os.Stdout)
 	tb.SetHeader([]string{"卦象", "爻辞"})
@@ -66,6 +81,7 @@ func (g *GuaType) Change() GuaType {
 	return gc
 }
 
+// 算卦数
 func (g *GuaType) Calc(args []string) {
 	if len(args) == SEQLEN {
 		var err error
@@ -78,13 +94,14 @@ func (g *GuaType) Calc(args []string) {
 	} else {
 		rand.Seed(time.Now().UnixNano())
 		for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
-			g.No[i] = calcYao()
+			g.No[i] = CalcOneYao()
 		}
 		log.Println(g.No)
 	}
 }
 
-func (g *GuaType) GetIndex() string {
+
+func (g *GuaType) GetDataIndex() string {
 	idx := ""
 	for _, n := range g.No {
 		idx += strconv.Itoa(n % 2)
@@ -93,7 +110,8 @@ func (g *GuaType) GetIndex() string {
 	return idx
 }
 
-func calcYao() int {
+// 计算卦象
+func CalcOneYao() int {
 	b1 := loop(TOTAL)           // 一变
 	b2 := loop(TOTAL - b1)      // 二变
 	b3 := loop(TOTAL - b1 - b2) // 三变
@@ -107,45 +125,63 @@ func calcYao() int {
 
 // 变
 func loop(total int) int {
-	// 天地
+	// 天地，随机分组
 	l := rand.Intn(total-UNIT*2) + UNIT
 	r := total - l
 
-	// 取人
+	// 取人，任意一组取一
 	if rand.Intn(2) == 0 {
 		l -= 1
 	} else {
 		r -= 1
 	}
 
-	// 取天
+	// 取天，天数除四取余
 	lm := l % UNIT
 	if lm == 0 {
 		lm = UNIT
 	}
 	l -= lm
 
-	// 取地
+	// 取地，地数除四取余
 	rm := r % UNIT
 	if rm == 0 {
 		rm = UNIT
 	}
 	r -= rm
 
-	// 取余
+	// 取余，取出总数
 	m := lm + rm + 1
 
 	log.Printf("总：%d，天：%d，地：%d，取：%d\n", total, l, r, m)
 	return m
 }
 
-func Load(filename string) {
-	data, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.Fatal(err)
+////////////////////////////////////////////////////////////
+func (g *GuaType) Divining() {
+	var chn []int
+	for n, i := range g.No {
+		if i == 6 || i == 9 {
+			chn = append(chn, n)
+		}
 	}
 
-	if err := json.Unmarshal(data, &YiData); err != nil {
-		log.Fatal(err)
+	switch len(chn) { // 算出来的六爻当中
+	case 0: // 六爻一个都没变，这时用本卦的卦辞来判断吉凶。
+	case 1: // 有一个爻是变爻，用本卦变爻的爻辞来判断吉凶。
+	case 2: // 有两个爻发生变动，用本卦里这两个变爻的爻辞来判断吉凶，并以位置靠上的那一个爻辞为主。
+	case 3: // 有三个变爻，就不能用变爻的爻辞来判断了，得用本卦和变卦的卦辞，以本卦的卦辞为主。
+	case 4: // 有四个变爻，这时就用变卦的两个不变爻的爻辞来判断吉凶。
+	case 5: // 有五个变爻，用变卦的那一个不变爻的爻辞来判断吉凶。
+	case 6: // 有六个变爻，分两种情况。
+		if true { // 一是六爻都是阳爻（构成了乾卦），或者六爻都是阴爻（构成了坤卦），那么，
+			// 如果是乾卦，就用乾卦“用九”的爻辞判断吉凶，
+			// 如果是坤卦，就用坤卦“用六”的爻辞判断吉凶。
+
+		} else { // 二是除了这两种情况之外的其他六爻全变的情况，就用变卦的卦辞来判断吉凶。
+
+		}
+
 	}
+	fmt.Println(chn)
 }

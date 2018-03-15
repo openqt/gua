@@ -36,10 +36,10 @@ func main() {
 		Use:   "gua",
 		Short: "易经卦象",
 		Run: func(cmd *cobra.Command, args []string) {
-			yi.Load("yi/data.json")
+			yi.Load()
 			g := yi.GuaType{}
 
-			g.Calc(args)
+			g.CalcSimple(args)
 			g.Show()
 
 			gc := g.Change()

@@ -15,18 +15,27 @@ const (
 	TOTAL  = 49
 	UNIT   = 4
 	SEQLEN = 6
-	YANG   = "▅▅▅▅▅"
-	YIN    = "▅▅ ▅▅"
+
+	YANG = "▅▅▅▅▅"
+	YIN  = "▅▅ ▅▅"
+
+	LAOYIN   = 6 // 老阴
+	SHAOYIN  = 8 // 少阴
+	LAOYANG  = 9 // 老阳
+	SHAOYANG = 7 // 少阳
 )
 
 type YaoType struct {
-	Image string
-	Text  string
+	Image string // 爻象
+	Text  string // 爻辞
 }
 
 type DataType struct {
 	Index string          // 卦序
 	Name  string          // 卦名
+	Text  string          // 卦辞
+	Extra string          // 额外信息，如用九、用六
+	Short string          // 卦简介
 	Desc  string          // 介绍
 	Yao   [SEQLEN]YaoType // 六爻
 }
@@ -35,7 +44,7 @@ var (
 	Data map[string]DataType // 易经数据
 )
 
-func Load(filename string) {
+func Load() {
 	data, err := Asset("data.json")
 	if err != nil {
 		log.Fatal(err)
@@ -53,7 +62,8 @@ type GuaType struct {
 
 func (g *GuaType) Show() {
 	data := Data[g.GetDataIndex()]
-	fmt.Printf("%s【卦%s】\n", data.Name, data.Index)
+	fmt.Printf("%s【卦%s】：%s\n", data.Name, data.Index, data.Text)
+	fmt.Println(data.Short)
 
 	tb := tablewriter.NewWriter(os.Stdout)
 	tb.SetHeader([]string{"卦象", "爻辞"})
@@ -68,38 +78,50 @@ func (g *GuaType) Change() GuaType {
 	gc := GuaType{}
 	for i, n := range g.No {
 		switch n {
-		case 9: // 老阳
-			gc.No[i] = 6
-		case 7: // 少阳
+		case LAOYIN: // 老阴
+			gc.No[i] = LAOYANG
+		case SHAOYANG: // 少阳
 			gc.No[i] = n
-		case 6: // 老阴
-			gc.No[i] = 9
-		case 8: // 少阴
+		case SHAOYIN: // 少阴
 			gc.No[i] = n
+		case LAOYANG: // 老阳
+			gc.No[i] = LAOYIN
 		}
 	}
 	return gc
 }
 
-// 算卦数
-func (g *GuaType) Calc(args []string) {
-	if len(args) == SEQLEN {
-		var err error
-		for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
-			if g.No[i], err = strconv.Atoi(args[i]); err != nil {
-				fmt.Println(err.Error())
-				os.Exit(1)
-			}
+func (g *GuaType) Input(args []string) {
+	var err error
+	for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
+		if g.No[i], err = strconv.Atoi(args[i]); err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
 		}
+	}
+}
+
+// 算卦数古典方法
+func (g *GuaType) CalcClassic() {
+	rand.Seed(time.Now().UnixNano()) // TODO: 随机数按照日期、卜算内容生成
+	for i := 0; i < SEQLEN; i++ {    // 自下至上，从0到5
+		g.No[i] = CalcYaoClassic()
+	}
+	log.Println(g.No)
+}
+
+// 算卦数简要方法
+func (g *GuaType) CalcSimple(args []string) {
+	if len(args) == SEQLEN {
+		g.Input(args)
 	} else {
 		rand.Seed(time.Now().UnixNano())
 		for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
-			g.No[i] = CalcOneYao()
+			g.No[i] = CalcYaoSimple()
 		}
 		log.Println(g.No)
 	}
 }
-
 
 func (g *GuaType) GetDataIndex() string {
 	idx := ""
@@ -111,7 +133,8 @@ func (g *GuaType) GetDataIndex() string {
 }
 
 // 计算卦象
-func CalcOneYao() int {
+// 三变之后剩余数字除以4。
+func CalcYaoClassic() int {
 	b1 := loop(TOTAL)           // 一变
 	b2 := loop(TOTAL - b1)      // 二变
 	b3 := loop(TOTAL - b1 - b2) // 三变
@@ -157,8 +180,41 @@ func loop(total int) int {
 	return m
 }
 
+// 计算卦象
+// 正面为阳，反面为阴。如果把三枚硬币同时扔下就会有四种组合：
+// 二阴一阳、二阳一阴、三阴、三阳。
+// 二阴一阳是少阳，二阳一阴是少阴，三阳是老阳，三阴是老阴。
+func CalcYaoSimple() int {
+	sum := 0
+	for i := 0; i < 3; i++ {
+		sum += rand.Intn(2)
+	}
+
+	switch sum {
+	case 0: // 老阴
+		return LAOYIN
+	case 1: // 少阳
+		return SHAOYANG
+	case 2: // 少阴
+		return SHAOYIN
+	case 3: // 老阳
+		return LAOYANG
+	}
+	return 0
+}
+
 ////////////////////////////////////////////////////////////
-func (g *GuaType) Divining() {
+// 得位
+func (g *GuaType) InPos(n int) bool {
+	return true // TODO: 得位算法
+}
+
+// 得中
+func (g *GuaType) InMid(n int) bool {
+	return n == 1 || n == 4
+}
+
+func (g *GuaType) Divining() { // TODO: 占卜算法
 	var chn []int
 	for n, i := range g.No {
 		if i == 6 || i == 9 {

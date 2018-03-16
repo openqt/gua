@@ -23,7 +23,7 @@ func (_ DummyIO) Write(_ []byte) (int, error) {
 	return 0, nil
 }
 
-func Conf(_ *cobra.Command, _ []string) {
+func Config(_ *cobra.Command, _ []string) {
 	if !config.showLog {
 		log.SetOutput(DummyIO{})
 	}
@@ -33,23 +33,14 @@ func Conf(_ *cobra.Command, _ []string) {
 
 func main() {
 	rootCmd := &cobra.Command{
-		Use:   "gua",
-		Short: "易经卦象",
+		Use:              "gua",
+		Short:            "易经卦象",
+		PersistentPreRun: Config,
 		Run: func(cmd *cobra.Command, args []string) {
-			yi.Load()
-			g := yi.GuaType{}
-
-			g.CalcSimple(args)
-			g.Show()
-
-			gc := g.Change()
-			gc.Show()
-
-			g.Divining()
+			yi.New().CalcSimple(args).Tell()
 		},
-		PersistentPreRun: Conf,
 	}
-	rootCmd.PersistentFlags().BoolVarP(&config.showLog, "verbose", "v", false, "Show more information")
+	rootCmd.PersistentFlags().BoolVarP(&config.showLog, "verbose", "v", false, "输出计算过程")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err.Error())

@@ -44,38 +44,54 @@ var (
 	Data map[string]DataType // 易经数据
 )
 
+func New() *GuaType {
+	Load()
+	return new(GuaType)
+}
+
 func Load() {
-	data, err := Asset("data.json")
+	if Data == nil {
+		data, err := Asset("data.json")
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if err := json.Unmarshal(data, &Data); err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func Dump() {
+	Load()
+	data, err := json.MarshalIndent(&Data, "", "  ")
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	if err := json.Unmarshal(data, &Data); err != nil {
-		log.Fatal(err)
-	}
+	os.Stdout.Write(data)
 }
 
 ////////////////////////////////////////////////////////////
 type GuaType struct {
-	No [SEQLEN]int // 卜算数字
+	No   [SEQLEN]int // 卜算数字
+	Data DataType    // 卦象数据
 }
 
-func (g *GuaType) Show() {
-	data := Data[g.GetDataIndex()]
-	fmt.Printf("%s【卦%s】：%s\n", data.Name, data.Index, data.Text)
-	fmt.Println(data.Short)
+func (g *GuaType) ShowGuaImage() {
+	fmt.Printf("%s【卦%s】：%s\n", g.Data.Name, g.Data.Index, g.Data.Text)
+	fmt.Println(g.Data.Short)
 
 	tb := tablewriter.NewWriter(os.Stdout)
 	tb.SetHeader([]string{"卦象", "爻辞"})
-	for _, yao := range data.Yao {
+	for _, yao := range g.Data.Yao {
 		tb.Append([]string{yao.Image, yao.Text})
 	}
 	tb.Render()
 }
 
 // 变卦
-func (g *GuaType) Change() GuaType {
-	gc := GuaType{}
+func (g *GuaType) Change() *GuaType {
+	gc := new(GuaType)
 	for i, n := range g.No {
 		switch n {
 		case LAOYIN: // 老阴
@@ -88,6 +104,7 @@ func (g *GuaType) Change() GuaType {
 			gc.No[i] = LAOYIN
 		}
 	}
+	gc.SetGuaData()
 	return gc
 }
 
@@ -102,16 +119,18 @@ func (g *GuaType) Input(args []string) {
 }
 
 // 算卦数古典方法
-func (g *GuaType) CalcClassic() {
+func (g *GuaType) CalcClassic() *GuaType {
 	rand.Seed(time.Now().UnixNano()) // TODO: 随机数按照日期、卜算内容生成
 	for i := 0; i < SEQLEN; i++ {    // 自下至上，从0到5
 		g.No[i] = CalcYaoClassic()
 	}
 	log.Println(g.No)
+	g.SetGuaData()
+	return g
 }
 
 // 算卦数简要方法
-func (g *GuaType) CalcSimple(args []string) {
+func (g *GuaType) CalcSimple(args []string) *GuaType {
 	if len(args) == SEQLEN {
 		g.Input(args)
 	} else {
@@ -121,15 +140,17 @@ func (g *GuaType) CalcSimple(args []string) {
 		}
 		log.Println(g.No)
 	}
+	g.SetGuaData()
+	return g
 }
 
-func (g *GuaType) GetDataIndex() string {
+func (g *GuaType) SetGuaData() {
 	idx := ""
 	for _, n := range g.No {
 		idx += strconv.Itoa(n % 2)
 	}
 	log.Printf("Index [%s]\n", idx)
-	return idx
+	g.Data = Data[idx]
 }
 
 // 计算卦象
@@ -205,8 +226,8 @@ func CalcYaoSimple() int {
 
 ////////////////////////////////////////////////////////////
 // 得位
-func (g *GuaType) InPos(n int) bool {
-	return true // TODO: 得位算法
+func (g *GuaType) InPos(i, n int) bool {
+	return (n-i)%2 == 0
 }
 
 // 得中
@@ -214,30 +235,70 @@ func (g *GuaType) InMid(n int) bool {
 	return n == 1 || n == 4
 }
 
-func (g *GuaType) Divining() { // TODO: 占卜算法
-	var chn []int
-	for n, i := range g.No {
-		if i == 6 || i == 9 {
-			chn = append(chn, n)
+func (g *GuaType) ShowText(ts ...interface{}) {
+	fmt.Println("----- 卜辞 -----")
+	if len(ts) > 0 {
+		for _, t := range ts {
+			fmt.Println(t)
 		}
+	} else { // 无明确文字用本卦卦辞
+		fmt.Println(g.Data.Text)
 	}
 
+	fmt.Println()
+	fmt.Println("----- 卦象 -----")
+	fmt.Println(g.No)
+	g.ShowGuaImage()
+}
+
+func (g *GuaType) ChangeValue(changed bool) []int {
+	var val []int
+	if changed {
+		for i, n := range g.No {
+			if n == LAOYANG || n == LAOYIN {
+				val = append(val, i)
+			}
+		}
+	} else {
+		for i, n := range g.No {
+			if n == SHAOYIN || n == SHAOYANG {
+				val = append(val, i)
+			}
+		}
+	}
+	return val
+}
+
+// 占卜算法
+func (g *GuaType) Tell() {
+	chn := g.ChangeValue(true)
 	switch len(chn) { // 算出来的六爻当中
 	case 0: // 六爻一个都没变，这时用本卦的卦辞来判断吉凶。
+		g.ShowText()
 	case 1: // 有一个爻是变爻，用本卦变爻的爻辞来判断吉凶。
+		g.ShowText(g.Data.Yao[chn[0]].Text)
 	case 2: // 有两个爻发生变动，用本卦里这两个变爻的爻辞来判断吉凶，并以位置靠上的那一个爻辞为主。
+		g.ShowText(g.Data.Yao[chn[1]].Text, g.Data.Yao[chn[0]].Text)
 	case 3: // 有三个变爻，就不能用变爻的爻辞来判断了，得用本卦和变卦的卦辞，以本卦的卦辞为主。
-	case 4: // 有四个变爻，这时就用变卦的两个不变爻的爻辞来判断吉凶。
+		gc := g.Change()
+		g.ShowText(g.Data.Text, gc.Data.Text)
+	case 4: // 有四个变爻，这时就用变卦的两个不变爻的爻辞来判断吉凶，并以位置靠下的那一个爻辞为主。
+		stb := g.ChangeValue(false)
+		gc := g.Change()
+		gc.ShowText(gc.Data.Yao[stb[0]], gc.Data.Yao[stb[1]])
 	case 5: // 有五个变爻，用变卦的那一个不变爻的爻辞来判断吉凶。
+		stb := g.ChangeValue(false)
+		gc := g.Change()
+		gc.ShowText(gc.Data.Yao[stb[0]])
 	case 6: // 有六个变爻，分两种情况。
-		if true { // 一是六爻都是阳爻（构成了乾卦），或者六爻都是阴爻（构成了坤卦），那么，
-			// 如果是乾卦，就用乾卦“用九”的爻辞判断吉凶，
-			// 如果是坤卦，就用坤卦“用六”的爻辞判断吉凶。
-
+		// 一是六爻都是阳爻（构成了乾卦），或者六爻都是阴爻（构成了坤卦），那么，
+		if g.Data.Name == "乾" { // 如果是乾卦，就用乾卦“用九”的爻辞判断吉凶，
+			g.ShowText(g.Data.Extra)
+		} else if g.Data.Name == "坤" { // 如果是坤卦，就用坤卦“用六”的爻辞判断吉凶。
+			g.ShowText(g.Data.Extra)
 		} else { // 二是除了这两种情况之外的其他六爻全变的情况，就用变卦的卦辞来判断吉凶。
-
+			gc := g.Change()
+			gc.ShowText()
 		}
-
 	}
-	fmt.Println(chn)
 }

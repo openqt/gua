@@ -79,7 +79,7 @@ type GuaType struct {
 
 func (g *GuaType) ShowGuaImage() {
 	fmt.Printf("%s【卦%s】：%s\n", g.Data.Name, g.Data.Index, g.Data.Text)
-	fmt.Println(g.Data.Short)
+	//fmt.Println(g.Data.Short)
 
 	tb := tablewriter.NewWriter(os.Stdout)
 	tb.SetHeader([]string{"卦象", "爻辞"})
@@ -274,10 +274,11 @@ func (g *GuaType) Tell() {
 	gc := g.Change()
 	if g.No != gc.No {
 		fmt.Printf("%s之%s\n", g.Data.Name, gc.Data.Name)
-		fmt.Printf("【卦%s】%s\n", g.Data.Index, g.Data.Short)
-		fmt.Printf("【卦%s】%s\n", gc.Data.Index, gc.Data.Short)
+		fmt.Printf("【%s】%s\n", g.Data.Index, g.Data.Short)
+		fmt.Printf("【%s】%s\n", gc.Data.Index, gc.Data.Short)
 	} else {
-		fmt.Printf("【卦%s】%s\n", g.Data.Index, g.Data.Short)
+		fmt.Printf("%s\n", g.Data.Name)
+		fmt.Printf("【%s】%s\n", g.Data.Index, g.Data.Short)
 	}
 
 	chn := g.ChangeValue(true)

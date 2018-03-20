@@ -8,7 +8,6 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
-	"time"
 )
 
 const (
@@ -117,8 +116,7 @@ func (g *GuaType) Input(args []string) {
 
 // 算卦数古典方法
 func (g *GuaType) CalcClassic() *GuaType {
-	rand.Seed(time.Now().UnixNano()) // TODO: 随机数按照日期、卜算内容生成
-	for i := 0; i < SEQLEN; i++ {    // 自下至上，从0到5
+	for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
 		g.No[i] = CalcYaoClassic()
 	}
 	log.Println(g.No)
@@ -131,7 +129,6 @@ func (g *GuaType) CalcSimple(args []string) *GuaType {
 	if len(args) == SEQLEN {
 		g.Input(args)
 	} else {
-		rand.Seed(time.Now().UnixNano())
 		for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
 			g.No[i] = CalcYaoSimple()
 		}

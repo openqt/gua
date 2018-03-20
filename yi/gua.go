@@ -16,9 +16,6 @@ const (
 	UNIT   = 4
 	SEQLEN = 6
 
-	YANG = "▅▅▅▅▅"
-	YIN  = "▅▅ ▅▅"
-
 	LAOYIN   = 6 // 老阴
 	SHAOYIN  = 8 // 少阴
 	LAOYANG  = 9 // 老阳
@@ -41,8 +38,13 @@ type DataType struct {
 }
 
 var (
-	Data map[string]DataType // 易经数据
+	Data map[string]*DataType // 易经数据
 )
+
+type GuaType struct {
+	No   [SEQLEN]int // 卜算数字
+	Data *DataType   // 卦象数据
+}
 
 func New() *GuaType {
 	Load()
@@ -72,11 +74,6 @@ func Dump() {
 }
 
 ////////////////////////////////////////////////////////////
-type GuaType struct {
-	No   [SEQLEN]int // 卜算数字
-	Data DataType    // 卦象数据
-}
-
 func (g *GuaType) ShowGuaImage() {
 	fmt.Printf("%s【卦%s】：%s\n", g.Data.Name, g.Data.Index, g.Data.Text)
 	//fmt.Println(g.Data.Short)
@@ -276,8 +273,7 @@ func (g *GuaType) Tell() {
 		fmt.Printf("%s之%s\n", g.Data.Name, gc.Data.Name)
 		fmt.Printf("【%s】%s\n", g.Data.Index, g.Data.Short)
 		fmt.Printf("【%s】%s\n", gc.Data.Index, gc.Data.Short)
-	} else {
-		fmt.Printf("%s\n", g.Data.Name)
+	} else { // 相同卦象显示卦文本
 		fmt.Printf("【%s】%s\n", g.Data.Index, g.Data.Short)
 	}
 

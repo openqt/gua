@@ -7,14 +7,16 @@ import (
 	"log"
 	"math/rand"
 	"time"
+	"github.com/satori/uuid"
 )
 
 type ConfigType struct {
-	showLog bool
+	ShowLog bool
+	Random  bool
 }
 
 var (
-	config ConfigType
+	conf ConfigType
 )
 
 ////////////////////////////////////////////////////////////
@@ -27,19 +29,24 @@ func (_ DummyIO) Write(_ []byte) (int, error) {
 }
 
 func Config(_ *cobra.Command, args []string) {
-	if !config.showLog {
+	if !conf.ShowLog {
 		log.SetOutput(DummyIO{})
 	}
 
 	crc := crc64.New(crc64.MakeTable(crc64.ISO))
-	if len(args) == 0 { // 没有输入数据用当前时间（小时）
-		crc.Write([]byte(time.Now().Format("2006010215")))
-	} else { // 有输入数据则取所有数据的值卜算
+	crc.Write([]byte(time.Now().Format("2006010215")))
+	if len(args) > 0 {
 		log.Println(args)
 		for _, t := range args {
 			crc.Write([]byte(t))
 		}
 	}
+
+	if conf.Random { // 增加随机UUID
+		data, _ := uuid.NewV4()
+		crc.Write(data.Bytes())
+	}
+
 	log.Println("CRC:", crc.Sum64())
 	rand.Seed(int64(crc.Sum64()))
 }
@@ -55,7 +62,8 @@ func main() {
 			yi.New().CalcSimple(args).Tell()
 		},
 	}
-	rootCmd.PersistentFlags().BoolVarP(&config.showLog, "verbose", "v", false, "输出计算过程")
+	rootCmd.PersistentFlags().BoolVarP(&conf.ShowLog, "verbose", "v", false, "输出计算过程")
+	rootCmd.PersistentFlags().BoolVarP(&conf.Random, "random", "r", false, "随机占卜")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err.Error())

@@ -104,14 +104,21 @@ func (g *GuaType) Change() *GuaType {
 	return gc
 }
 
-func (g *GuaType) Input(args []string) {
-	var err error
-	for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
-		if g.No[i], err = strconv.Atoi(args[i]); err != nil {
-			fmt.Println(err.Error())
-			os.Exit(1)
-		}
+func (g *GuaType) Input(no string) {
+	if len(no) != SEQLEN {
+		goto END
 	}
+	for i, s := range no { // 自下至上，从0到5
+		n := int(s) - '0'
+		if n > 9 || n < 6 {
+			goto END
+		}
+		g.No[i] = n
+	}
+	return
+END:
+	fmt.Println("无效的数据")
+	os.Exit(1)
 }
 
 // 算卦数古典方法
@@ -125,9 +132,9 @@ func (g *GuaType) CalcClassic() *GuaType {
 }
 
 // 算卦数简要方法
-func (g *GuaType) CalcSimple(args []string) *GuaType {
-	if len(args) == SEQLEN {
-		g.Input(args)
+func (g *GuaType) CalcSimple(no string) *GuaType {
+	if len(no) > 0 {
+		g.Input(no)
 	} else {
 		for i := 0; i < SEQLEN; i++ { // 自下至上，从0到5
 			g.No[i] = CalcYaoSimple()

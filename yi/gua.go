@@ -73,14 +73,37 @@ func Dump() {
 }
 
 ////////////////////////////////////////////////////////////
-func (g *GuaType) ShowGuaImage() {
+
+// 0-5爻辞或-1卦辞，10用辞
+func (g *GuaType) GetText(n int) string {
+	if n == 10 {
+		return g.Data.Extra
+	}
+
+	if n >= 0 && n < 6 {
+		return g.Data.Yao[n].Text
+	}
+	return g.Data.Text
+}
+
+func (g *GuaType) ShowGuaImage(ts ...int) {
 	fmt.Printf("%s【卦%s】：%s\n", g.Data.Name, g.Data.Index, g.Data.Text)
-	//fmt.Println(g.Data.Short)
 
 	tb := tablewriter.NewWriter(os.Stdout)
 	tb.SetHeader([]string{"卦象", "爻辞"})
-	for _, yao := range g.Data.Yao {
-		tb.Append([]string{yao.Image, yao.Text})
+	tb.SetBorder(true)
+
+	for n, yao := range g.Data.Yao {
+		text := ""
+		if len(ts) > 0 {
+			for _, t := range ts {
+				if n == t {
+					text = yao.Text
+					break
+				}
+			}
+		}
+		tb.Append([]string{yao.Image, text})
 	}
 	tb.Render()
 }
@@ -236,34 +259,34 @@ func (g *GuaType) InMid(n int) bool {
 	return n == 1 || n == 4
 }
 
-func (g *GuaType) ShowText(ts ...interface{}) {
+func (g *GuaType) ShowText(ts ...int) {
 	fmt.Println("----- 卜辞 -----")
 	if len(ts) > 0 {
 		for _, t := range ts {
-			fmt.Println(t)
+			fmt.Println(g.GetText(t))
 		}
 	} else { // 无明确文字用本卦卦辞
-		fmt.Println(g.Data.Text)
+		fmt.Println(g.GetText(-1))
 	}
-
 	fmt.Println()
+
 	fmt.Println("----- 卦象 -----")
-	fmt.Println(g.No)
-	g.ShowGuaImage()
+	g.ShowGuaImage(ts ...)
 }
 
+// 取变卦或不变卦
 func (g *GuaType) ChangeValue(changed bool) []int {
 	var val []int
-	if changed {
+	if changed {  // 取变卦
 		for i, n := range g.No {
 			if n == LAOYANG || n == LAOYIN {
-				val = append(val, i)
+				val = append(val, SEQLEN-i-1)
 			}
 		}
-	} else {
+	} else { // 取不变卦
 		for i, n := range g.No {
 			if n == SHAOYIN || n == SHAOYANG {
-				val = append(val, i)
+				val = append(val, SEQLEN-i-1)
 			}
 		}
 	}
@@ -286,23 +309,24 @@ func (g *GuaType) Tell() {
 	case 0: // 六爻一个都没变，这时用本卦的卦辞来判断吉凶。
 		g.ShowText()
 	case 1: // 有一个爻是变爻，用本卦变爻的爻辞来判断吉凶。
-		g.ShowText(g.Data.Yao[chn[0]].Text)
+		g.ShowText(chn[0])
 	case 2: // 有两个爻发生变动，用本卦里这两个变爻的爻辞来判断吉凶，并以位置靠上的那一个爻辞为主。
-		g.ShowText(g.Data.Yao[chn[1]].Text, g.Data.Yao[chn[0]].Text)
+		g.ShowText(chn[1], chn[0])
 	case 3: // 有三个变爻，就不能用变爻的爻辞来判断了，得用本卦和变卦的卦辞，以本卦的卦辞为主。
-		g.ShowText(g.Data.Text, gc.Data.Text)
+		g.ShowText(-1)
+		gc.ShowText(-1)
 	case 4: // 有四个变爻，这时就用变卦的两个不变爻的爻辞来判断吉凶，并以位置靠下的那一个爻辞为主。
 		stb := g.ChangeValue(false)
-		gc.ShowText(gc.Data.Yao[stb[0]], gc.Data.Yao[stb[1]])
+		gc.ShowText(stb[0], stb[1])
 	case 5: // 有五个变爻，用变卦的那一个不变爻的爻辞来判断吉凶。
 		stb := g.ChangeValue(false)
-		gc.ShowText(gc.Data.Yao[stb[0]])
+		gc.ShowText(stb[0])
 	case 6: // 有六个变爻，分两种情况。
 		// 一是六爻都是阳爻（构成了乾卦），或者六爻都是阴爻（构成了坤卦），那么，
 		if g.Data.Name == "乾" { // 如果是乾卦，就用乾卦“用九”的爻辞判断吉凶，
-			g.ShowText(g.Data.Extra)
+			g.ShowText(10)
 		} else if g.Data.Name == "坤" { // 如果是坤卦，就用坤卦“用六”的爻辞判断吉凶。
-			g.ShowText(g.Data.Extra)
+			g.ShowText(10)
 		} else { // 二是除了这两种情况之外的其他六爻全变的情况，就用变卦的卦辞来判断吉凶。
 			gc := g.Change()
 			gc.ShowText()

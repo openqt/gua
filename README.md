@@ -2,7 +2,9 @@
 易经卦象
 
 
-[《周易》](http://guoxue.lishichunqiu.com/jingbu/zhouyi/)
+[《周易》全文](http://guoxue.lishichunqiu.com/jingbu/zhouyi/)
+
+![封面](http://www.lishichunqiu.com/images/guoxue/zhouyi.jpg)
 ```
 周易，中国古代哲学、研究、预测宇宙万物变易规律的典籍。
 包括《易经》和《易传》两大部分。

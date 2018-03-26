@@ -296,12 +296,11 @@ func (g *GuaType) ChangeValue(changed bool) []int {
 // 占卜算法
 func (g *GuaType) Tell() {
 	gc := g.Change()
+
+	fmt.Printf("%s之%s\n", g.Data.Name, gc.Data.Name)
+	fmt.Printf("【卦%s】%s\n", g.Data.Index, g.Data.Short)
 	if g.No != gc.No {
-		fmt.Printf("%s之%s\n", g.Data.Name, gc.Data.Name)
-		fmt.Printf("【%s】%s\n", g.Data.Index, g.Data.Short)
-		fmt.Printf("【%s】%s\n", gc.Data.Index, gc.Data.Short)
-	} else { // 相同卦象显示卦文本
-		fmt.Printf("【%s】%s\n", g.Data.Index, g.Data.Short)
+		fmt.Printf("【卦%s】%s\n", gc.Data.Index, gc.Data.Short)
 	}
 
 	chn := g.ChangeValue(true)
